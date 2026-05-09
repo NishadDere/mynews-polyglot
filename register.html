@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register User (SQL)</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background: linear-gradient(rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.3)),
+                        url('collection-newspapers.png');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            margin: 0;
+            padding: 0;
+        }
+        .header {
+            background: #2a3b4c;
+            color: white;
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 1.5em;
+        }
+        .header nav a {
+            color: white;
+            text-decoration: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+        }
+        .header nav a.active {
+            background: #4a90e2;
+        }
+        .container {
+            max-width: 600px;
+            margin: 40px auto;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+        h2 {
+            border-bottom: 2px solid #4a90e2;
+            padding-bottom: 10px;
+            color: #2a3b4c;
+        }
+        input[type="text"], input[type="password"] {
+            width: calc(100% - 20px);
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        button {
+            background: #4a90e2;
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1em;
+            width: 100%;
+        }
+        button:hover {
+            background: #357ABD;
+        }
+        button:disabled {
+            background: #999;
+            cursor: not-allowed;
+        }
+        pre {
+            background: #eee;
+            padding: 15px;
+            border-radius: 4px;
+            white-space: pre-wrap;
+        }
+        .login-link {
+            text-align: center;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <header class="header">
+        <h1>MyNews</h1>
+        <nav>
+            <a href="login.html">1. Login</a>
+            <a href="register.html" class="active">2. Register User</a>
+            <a href="submit.html">3. Submit Post</a>
+            <a href="index.html">4. View Feed</a>
+        </nav>
+    </header>
+
+    <div class="container">
+        <h2>2. Register a New User (Writes to SQL)</h2>
+        <form id="registerForm">
+            <label for="username">Username:</label>
+            <input type="text" id="username" required>
+            <br><br>
+            <label for="password">Password:</label>
+            <input type="password" id="password" required>
+            <br><br>
+            <button type="submit" id="registerButton">Register</button>
+        </form>
+        
+        <button id="nextButton" style="display: none; background: #007a5a; margin-top: 10px;">Go to Step 3 (Submit Post)</button>
+        
+        <div class="login-link">
+            <p>Already have an account? <a href="login.html">Login here</a></p>
+        </div>
+
+        <h3>Response:</h3>
+        <pre id="response"></pre>
+    </div>
+
+    <script>
+        let newUserId = null; // Store the new user ID
+        const registerButton = document.getElementById('registerButton');
+        const nextButton = document.getElementById('nextButton');
+        const responseEl = document.getElementById('response');
+
+        document.getElementById('registerForm').addEventListener('submit', async function (e) {
+            e.preventDefault();
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            registerButton.disabled = true;
+            registerButton.textContent = "Registering...";
+            nextButton.style.display = 'none';
+
+            try {
+                const res = await fetch('http://localhost:3000/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const data = await res.json();
+                responseEl.textContent = JSON.stringify(data, null, 2);
+
+                if (res.ok) { // Check if status was 201 (Created)
+                    responseEl.style.background = '#d4edda'; // Green for success
+                    newUserId = data.user_id; // Save the new ID
+                    nextButton.style.display = 'block'; // Show the "Next" button
+                    registerButton.disabled = false;
+                    registerButton.textContent = "Register Another User";
+                } else {
+                    responseEl.style.background = '#f8d7da'; // Red for error
+                    registerButton.disabled = false;
+                    registerButton.textContent = "Register";
+                }
+            } catch (err) {
+                responseEl.style.background = '#f8d7da';
+                responseEl.textContent = "Error: Could not connect to server. Is it running?";
+                registerButton.disabled = false;
+                registerButton.textContent = "Register";
+            }
+        });
+
+        nextButton.addEventListener('click', () => {
+            if (newUserId) {
+                window.location.href = `submit.html?user_id=${newUserId}`;
+            } else {
+                alert("Please register a user first.");
+            }
+        });
+    </script>
+</body>
+</html>
+

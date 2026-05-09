@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>News Feed (MongoDB)</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background: linear-gradient(rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.3)),
+                        url('collection-newspapers.png');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            margin: 0;
+            padding: 0;
+        }
+        .header {
+            background: #2a3b4c;
+            color: white;
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 1.5em;
+        }
+        .header nav a {
+            color: white;
+            text-decoration: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+        }
+        .header nav a.active {
+            background: #4a90e2;
+        }
+        .container {
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 20px;
+        }
+        #loadPosts {
+            background: #007a5a;
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1em;
+            margin-bottom: 20px;
+        }
+        .post {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+            padding: 20px;
+        }
+        .post h3 {
+            margin-top: 0;
+            color: #2a3b4c;
+        }
+        .post p {
+            line-height: 1.6;
+        }
+        .post small {
+            color: #555;
+            font-style: italic;
+        }
+        .post button {
+            background: #4a90e2;
+            color: white;
+            padding: 8px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9em;
+            margin-top: 10px;
+        }
+        .post button:hover {
+            background: #357ABD;
+        }
+        .post button:disabled {
+            background: #999;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+
+    <header class="header">
+        <h1>MyNews</h1>
+        <nav>
+            <a href="login.html">1. Login</a>
+            <a href="register.html">2. Register User</a>
+            <a href="submit.html">3. Submit Post</a>
+            <a href="index.html" class="active">4. View Feed</a>
+        </nav>
+    </header>
+
+    <div class="container">
+        <button id="loadPosts">Load/Refresh Posts</button>
+        <hr style="border: 0; border-top: 1px solid rgba(0,0,0,0.1);">
+        <div id="posts-container">
+            <p style="background: rgba(255,255,255,0.9); padding: 10px; border-radius: 8px;">Loading posts...</p>
+        </div>
+    </div>
+
+    <script>
+        const postsContainer = document.getElementById('posts-container');
+
+        async function fetchPosts() {
+            try {
+                // This URL fetches the posts sorted by upvotes
+                const res = await fetch('http://localhost:3000/posts'); 
+                if (!res.ok) {
+                    postsContainer.innerHTML = "<p style='background: rgba(255,255,255,0.9); padding: 10px; border-radius: 8px;'>Error loading posts. Is the server running?</p>";
+                    return;
+                }
+                const posts = await res.json();
+                
+                postsContainer.innerHTML = ''; // Clear old posts
+                if (posts.length === 0) {
+                    postsContainer.innerHTML = "<p style='background: rgba(255,255,255,0.9); padding: 10px; border-radius: 8px;'>No posts found. Please submit one!</p>";
+                }
+
+                posts.forEach(post => {
+                    const postDiv = document.createElement('div');
+                    postDiv.className = 'post';
+                    // Using textContent to prevent HTML injection from user-submitted content
+                    const title = document.createElement('h3');
+                    title.textContent = post.title;
+                    
+                    const content = document.createElement('p');
+                    content.textContent = post.content;
+                    
+                    const meta = document.createElement('small');
+                    meta.textContent = `Author ID: ${post.author_id} (from SQL) | Created: ${new Date(post.createdAt).toLocaleString()}`;
+                    
+                    const hr = document.createElement('hr');
+                    
+                    const upvoteButton = document.createElement('button');
+                    // We pass 'event' to the function to get the button
+                    upvoteButton.onclick = (event) => upvotePost(post._id, event);
+                    
+                    const upvoteText = document.createElement('span');
+                    upvoteText.textContent = `Upvote (${post.upvotes})`;
+                    upvoteButton.appendChild(upvoteText);
+
+                    postDiv.appendChild(title);
+                    postDiv.appendChild(content);
+                    postDiv.appendChild(meta);
+                    postDiv.appendChild(hr);
+                    postDiv.appendChild(upvoteButton);
+                    
+                    postsContainer.appendChild(postDiv);
+                });
+            } catch (err) {
+                postsContainer.innerHTML = "<p style='background: rgba(255,255,255,0.9); padding: 10px; border-radius: 8px;'>Error connecting to server.</p>";
+            }
+        }
+
+        // This function disables the button to prevent double-clicks
+        async function upvotePost(postId, event) {
+            // Find the specific button that was clicked
+            const button = event.currentTarget;
+            button.disabled = true;
+            button.innerHTML = "Voted!";
+            
+            await fetch(`http://localhost:3000/posts/${postId}/upvote`, {
+                method: 'PUT'
+            });
+            
+            // We wait just a moment before refreshing to show the "Voted!" text
+            setTimeout(() => {
+                 fetchPosts();
+            }, 500);
+        }
+
+        document.getElementById('loadPosts').addEventListener('click', fetchPosts);
+        fetchPosts(); // Load posts on page load
+    </script>
+</body>
+</html>
+

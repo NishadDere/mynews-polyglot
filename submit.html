@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Submit Post (MongoDB)</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background: linear-gradient(rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.3)),
+                        url('collection-newspapers.png');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            margin: 0;
+            padding: 0;
+        }
+        .header {
+            background: #2a3b4c;
+            color: white;
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 1.5em;
+        }
+        .header nav a {
+            color: white;
+            text-decoration: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+        }
+        .header nav a.active {
+            background: #4a90e2;
+        }
+        .container {
+            max-width: 600px;
+            margin: 40px auto;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+        h2 {
+            border-bottom: 2px solid #4a90e2;
+            padding-bottom: 10px;
+            color: #2a3b4c;
+        }
+        input[type="text"], input[type="number"], textarea {
+            width: calc(100% - 20px);
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        textarea {
+            height: 100px;
+        }
+        input#author_id {
+            background: #eee;
+            cursor: not-allowed;
+        }
+        button {
+            background: #4a90e2;
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1em;
+            width: 100%;
+        }
+        button:hover {
+            background: #357ABD;
+        }
+        button:disabled {
+            background: #999;
+            cursor: not-allowed;
+        }
+        pre {
+            background: #eee;
+            padding: 15px;
+            border-radius: 4px;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+
+    <header class="header">
+        <h1>MyNews</h1>
+        <nav>
+            <a href="login.html">1. Login</a>
+            <a href="register.html">2. Register User</a>
+            <a href="submit.html" class="active">3. Submit Post</a>
+            <a href="index.html">4. View Feed</a>
+        </nav>
+    </header>
+
+    <div class="container">
+        <h2>3. Submit a New Post (Writes to MongoDB)</h2>
+        <form id="postForm">
+            <label for="author_id">Author ID (from SQL):</label>
+            <input type="number" id="author_id" required readonly>
+            <br><br>
+            <label for="title">Title:</label>
+            <input type="text" id="title" required>
+            <br><br>
+            <label for="content">Content:</label>
+            <textarea id="content" required></textarea>
+            <br><br>
+            <button type="submit" id="submitButton">Submit Post and Go to Feed</button>
+        </form>
+        <h3>Response:</h3>
+        <pre id="response"></pre>
+    </div>
+
+    <script>
+        window.addEventListener('DOMContentLoaded', () => {
+            const params = new URLSearchParams(window.location.search);
+            const userId = params.get('user_id');
+            if (userId) {
+                document.getElementById('author_id').value = userId;
+                // Store the user_id in case they refresh the page
+                localStorage.setItem('myNewsUserId', userId);
+            } else {
+                // If they came here directly, try to get the ID from storage
+                document.getElementById('author_id').value = localStorage.getItem('myNewsUserId') || '';
+            }
+        });
+
+        document.getElementById('postForm').addEventListener('submit', async function (e) {
+            e.preventDefault();
+            const responseEl = document.getElementById('response');
+            const author_id = document.getElementById('author_id').value;
+            const title = document.getElementById('title').value;
+            const content = document.getElementById('content').value;
+
+            const submitButton = document.getElementById('submitButton');
+            submitButton.disabled = true;
+            submitButton.textContent = "Submitting...";
+
+            if (!author_id) {
+                responseEl.style.background = '#f8d7da';
+                responseEl.textContent = "Error: No Author ID. Please log in or register first.";
+                submitButton.disabled = false;
+                submitButton.textContent = "Submit Post and Go to Feed";
+                return;
+            }
+
+            try {
+                const res = await fetch('http://localhost:3000/posts', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ title, content, author_id: parseInt(author_id) })
+                });
+
+                const data = await res.json();
+                responseEl.textContent = JSON.stringify(data, null, 2);
+
+                if (res.ok) {
+                    responseEl.style.background = '#d4edda';
+                    responseEl.textContent += "\n\nSuccess! Redirecting to feed...";
+                    setTimeout(() => {
+                        window.location.href = 'index.html';
+                    }, 1000);
+                } else {
+                    responseEl.style.background = '#f8d7da';
+                    submitButton.disabled = false;
+                    submitButton.textContent = "Submit Post and Go to Feed";
+                }
+            } catch (err) {
+                responseEl.style.background = '#f8d7da';
+                responseEl.textContent = "Error: Could not connect to server. Is it running?";
+                submitButton.disabled = false;
+                submitButton.textContent = "Submit Post and Go to Feed";
+            }
+        });
+    </script>
+</body>
+</html>
+
